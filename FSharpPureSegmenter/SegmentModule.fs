@@ -1,7 +1,6 @@
 ﻿module SegmentModule
 
 open System
-open System.Reflection
 
 type Coordinate = (int * int) // x, y coordinate of a pixel
 type Colour = byte list       // one entry for each colour band, typically: [red, green and blue]
@@ -10,43 +9,38 @@ type Segment =
     | Pixel of Coordinate * Colour
     | Parent of Segment * Segment 
 
-
-// return a list of the standard deviations of the pixel colours in the given segment
-// the list contains one entry for each colour band, typically: [red, green and blue]
-let stddev (segment: Segment) : float list =
-    raise (System.NotImplementedException())
-    // Fixme: add implementation here
-
-
-// determine the cost of merging the given segments: 
-// equal to the standard deviation of the combined the segments minus the sum of the standard deviations of the individual segments, 
-// weighted by their respective sizes and summed over all colour bands
-let mergeCost segment1 segment2 : float = 
-    raise (System.NotImplementedException())
-    // Fixme: add implementation here
-
-
 /////////// Helper Functions
 
-let rec convertSegmentIntoPixels (segment:Segment) : Segment list =
+let rec convertBytestoFloats bytes =
+    match bytes with
+    | [] -> []
+    | head::tail -> [List.map (fun x -> float x) head] @ (convertBytestoFloats tail) 
+
+
+let rec convertSegmentIntoPixelColours (segment:Segment) : Colour list =
     match segment with
-    | Pixel(_,_) -> [segment]
-    | Parent(segment1, segment2) -> (convertSegmentIntoPixels segment1) @ (convertSegmentIntoPixels segment2)
+    | Pixel(_,colour) -> [colour]
+    | Parent(segment1, segment2) -> (convertSegmentIntoPixelColours segment1) @ (convertSegmentIntoPixelColours segment2)
 
-let listOfLists = [ [1;2;3;4;5]; [6;7;8;9;10]; [11;12;13;14;15] ]
+let listOfLists = [ [1;2;3;4;5]; [6;7;8;9;10]; [11;12;13;14;15]; [16;17;18;19;20] ]
 
-let rec extractColumnFromListOfLists (list: int list) : int list =
+let getFirstColumn list = 
+    list |> List.map List.head
+
+let rec removeFirstItem list =
     match list with
     | [] -> []
-    | head::tail -> (head |> List.map List.head) :: (extractColumnFromListOfLists tail)
+    | head::tail -> tail
 
+let chopHeadsOfListsInList list =
+    list |> List.map removeFirstItem 
 
-let rec extractColourBandsFromPixels (pixels: Segment list) : byte list =
-    match pixels with
-    | [] -> []
-    | head::tail -> 
-        match head with
-            | Pixel(_, colour) -> colour
+let rec extractColumns (list: 'T List list) = 
+    if list.[0] = [] then [] 
+    else [getFirstColumn list] @ (list |> chopHeadsOfListsInList |> extractColumns)
+
+let rec extractColourBands (colours: Colour list) =
+    extractColumns colours
 
 let calculateStddev (input : float list) =
     let sampleSize = float input.Length
@@ -56,6 +50,28 @@ let calculateStddev (input : float list) =
             ( fun sum item -> sum + Math.Pow(item - mean, 2.0) ) 0.0
     let variance = differenceOfSquares / sampleSize
     Math.Sqrt(variance)
+
+
+
+// return a list of the standard deviations of the pixel colours in the given segment
+// the list contains one entry for each colour band, typically: [red, green and blue]
+let stddev (segment: Segment) : float list =
+    // raise (System.NotImplementedException())
+    // Fixme: add implementation here
+    segment 
+    |> convertSegmentIntoPixelColours 
+    |> extractColourBands 
+    |> convertBytestoFloats 
+    |> List.map calculateStddev
+
+
+
+// determine the cost of merging the given segments: 
+// equal to the standard deviation of the combined the segments minus the sum of the standard deviations of the individual segments, 
+// weighted by their respective sizes and summed over all colour bands
+let mergeCost segment1 segment2 : float = 
+    raise (System.NotImplementedException())
+    // Fixme: add implementation here
 
 
 
