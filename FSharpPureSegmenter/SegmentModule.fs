@@ -22,7 +22,6 @@ let rec convertSegmentIntoPixelColours (segment:Segment) : Colour list =
     | Pixel(_,colour) -> [colour]
     | Parent(segment1, segment2) -> (convertSegmentIntoPixelColours segment1) @ (convertSegmentIntoPixelColours segment2)
 
-let listOfLists = [ [1;2;3;4;5]; [6;7;8;9;10]; [11;12;13;14;15]; [16;17;18;19;20] ]
 
 let getFirstColumn list = 
     list |> List.map List.head
@@ -51,7 +50,13 @@ let calculateStddev (input : float list) =
     let variance = differenceOfSquares / sampleSize
     Math.Sqrt(variance)
 
+let rec getNumPixels (segment: Segment) : float =
+    match segment with
+    | Pixel(_,_) -> 1.0
+    | Parent(segment1, segment2) -> (getNumPixels segment1) + (getNumPixels segment2)
 
+let sumStddevOfAllBands list =
+    List.reduce (+) list
 
 // return a list of the standard deviations of the pixel colours in the given segment
 // the list contains one entry for each colour band, typically: [red, green and blue]
@@ -70,8 +75,15 @@ let stddev (segment: Segment) : float list =
 // equal to the standard deviation of the combined the segments minus the sum of the standard deviations of the individual segments, 
 // weighted by their respective sizes and summed over all colour bands
 let mergeCost segment1 segment2 : float = 
-    raise (System.NotImplementedException())
+    //raise (System.NotImplementedException())
     // Fixme: add implementation here
+    let segment1Stddev = segment1 |> stddev |> sumStddevOfAllBands
+    let segment2Stddev = segment2 |> stddev |> sumStddevOfAllBands
+    let combinedSegmentStddev = Parent (segment1, segment2) |> stddev |> sumStddevOfAllBands
+
+    (combinedSegmentStddev * (getNumPixels (Parent (segment1, segment2)))) - (segment1Stddev * (getNumPixels segment1) + segment2Stddev * (getNumPixels segment2))
+
+
 
 
 
