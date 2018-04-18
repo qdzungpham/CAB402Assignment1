@@ -44,7 +44,7 @@ namespace CSharpSegmenter.Services
 
         private List<Segment> GetNeighbouringSegments(Segment givenSegment, int N)
         {
-            List<Coordinate> coordinates = givenSegment.Coordinate;
+            List<Coordinate> coordinates = givenSegment.GetSegmentCoordinates();
 
             List<Coordinate> neighbouringCoordinates = new List<Coordinate>();
 
@@ -81,11 +81,11 @@ namespace CSharpSegmenter.Services
 
         }
 
-        private List<Segment> GetBestNeighbouringSegments(List<Segment> neighbours, float threshold)
-        {
-            var segmentsAndMergeCosts = new List<KeyValuePair<Segment, float>>();
+        //private List<Segment> GetBestNeighbouringSegments(List<Segment> neighbours, float threshold)
+        //{
+        //    var segmentsAndMergeCosts = new List<KeyValuePair<Segment, float>>();
 
-        }
+        //}
 
 
     }

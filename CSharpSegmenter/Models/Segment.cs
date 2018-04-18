@@ -4,43 +4,63 @@ using System.Text;
 
 namespace CSharpSegmenter.Models
 {
-    public class Segment 
+    public interface Segment 
     {
-        public Segment()
-        {
-
-        }
-
-        public List<Coordinate> Coordinate { get; protected set; }
-        public List<byte[]> Colour { get; protected set; }
+        List<byte[]> GetSegmentColours();
+        List<Coordinate> GetSegmentCoordinates();
 
     }
 
     public class Pixel : Segment
     {
-        
+        private List<Coordinate> coordinates;
+        private List<byte[]> colours;
 
         public Pixel(Coordinate coordinate, byte[] colour)
         {
-            Coordinate = new List<Coordinate>() { coordinate };
-            Colour = new List<byte[]>() { colour };
+            coordinates = new List<Coordinate>();
+            colours = new List<byte[]>();
+
+            coordinates.Add(coordinate);
+            colours.Add(colour);
+        }
+
+        public List<byte[]> GetSegmentColours()
+        {
+            return colours;
+        }
+
+        public List<Coordinate> GetSegmentCoordinates()
+        {
+            return coordinates;
         }
     }
 
     public class Parent : Segment
     {
-        public Pixel Pixel1 { get; private set; }
-        public Pixel Pixel2 { get; private set; }
+        private List<Coordinate> coordinates;
+        private List<byte[]> colours;
 
-        public Parent(Pixel pixel1, Pixel pixel2)
+        public Parent(Segment segment1, Segment segment2)
         {
-            Coordinate = new List<Coordinate>();
-            Coordinate.AddRange(pixel1.Coordinate);
-            Coordinate.AddRange(pixel2.Coordinate);
+            coordinates = new List<Coordinate>();
+            colours = new List<byte[]>();
 
-            Colour = new List<byte[]>();
-            Colour.AddRange(pixel1.Colour);
-            Colour.AddRange(pixel2.Colour);
+            coordinates.AddRange(segment1.GetSegmentCoordinates());
+            coordinates.AddRange(segment2.GetSegmentCoordinates());
+
+            colours.AddRange(segment1.GetSegmentColours());
+            colours.AddRange(segment2.GetSegmentColours());
+        }
+
+        public List<byte[]> GetSegmentColours()
+        {
+            return colours;
+        }
+
+        public List<Coordinate> GetSegmentCoordinates()
+        {
+            return coordinates;
         }
     }
 }
