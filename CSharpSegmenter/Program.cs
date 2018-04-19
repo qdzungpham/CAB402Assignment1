@@ -1,6 +1,9 @@
 ﻿using CSharpSegmenter.Helpers;
+using CSharpSegmenter.Models;
 using CSharpSegmenter.Services;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace CSharpSegmenter
 {
@@ -8,14 +11,16 @@ namespace CSharpSegmenter
     {
         static void Main(string[] args)
         {
-            //throw new NotImplementedException();
-            // Fixme: add implementation here
+            var image = new TiffImage(@"C:\Development\SegmentationSkeleton\TestImages\L15-3792E-1717N-Q4.tif");
 
-            //var image = TiffModule.LoadImage(@"C:\Development\SegmentationSkeleton\TestImages\L15-3662E-1902N-Q4.tif");
-            //var v = 1;
-            var c = new float[] { (float)10.0, (float)20.0, (float)30.0, (float)40.0 };
-            Console.WriteLine(SegmentService.CalculateStddev(c));
-            Console.ReadKey();
+            var N = 5;
+            var threshold = 800.0F;
+
+            var segmentation = new SegmentationService(image, N, threshold);
+
+            image.overlaySegmentation("segmented.tif", N, segmentation);
+
+
         }
     }
 }
