@@ -1,4 +1,4 @@
-﻿module SegmentModule
+﻿module ImpureSegmentModule
 
 open System
 
@@ -82,8 +82,6 @@ let mergeCost segment1 segment2 : float =
     let combinedSegmentStddev = Parent (segment1, segment2) |> stddev |> sumStddevOfAllBands
 
     (combinedSegmentStddev * (getNumPixels (Parent (segment1, segment2)))) - (segment1Stddev * (getNumPixels segment1) + segment2Stddev * (getNumPixels segment2))
-
-
 
 
 

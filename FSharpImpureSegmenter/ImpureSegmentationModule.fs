@@ -1,10 +1,9 @@
-﻿module SegmentationModule
+﻿module ImpureSegmentationModule
 
-open SegmentModule
+open ImpureSegmentModule
 
 // Maps segments to their immediate parent segment that they are contained within (if any) 
 type Segmentation = Map<Segment, Segment>
-
 
 // Helper Functions
 
@@ -59,6 +58,11 @@ let rec getMutallyOptimalNeighbours bestNeighbours segmentation segmentA segment
             let x = bestNeighbours segmentation head
             if (Set.contains segmentA x) then [head] @ rest else rest
 
+
+
+ /////////////////////
+
+
 // Find the largest/top level segment that the given segment is a part of (based on the current segmentation)
 let rec findRoot (segmentation: Segmentation) segment : Segment =
     //raise (System.NotImplementedException())
@@ -72,10 +76,11 @@ let rec findRoot (segmentation: Segmentation) segment : Segment =
 // Initially, every pixel/coordinate in the image is a separate Segment
 // Note: this is a higher order function which given an image, 
 // returns a function which maps each coordinate to its corresponding (initial) Segment (of kind Pixel)
-let createPixelMap (image:TiffModule.Image) : (Coordinate -> Segment) =
+let createPixelMap (pixelArray:Segment[,]) : (Coordinate -> Segment) =
     //raise (System.NotImplementedException())
     // Fixme: add implementation here
-    (fun coordinate -> Pixel (coordinate, TiffModule.getColourBands image coordinate))
+    (fun coordinate -> let x, y = coordinate
+                       pixelArray.[x, y])
 
 // Find the neighbouring segments of the given segment (assuming we are only segmenting the top corner of the image of size 2^N x 2^N)
 // Note: this is a higher order function which given a pixelMap function and a size N, 
@@ -161,7 +166,11 @@ let segment (image:TiffModule.Image) (N: int) (threshold:float)  : (Coordinate -
     //raise (System.NotImplementedException())
     // Fixme: use the functions above to help implement this function
 
-    let pixelMap = createPixelMap image
+    let pixelArray =
+        let imageSize = pown 2 N
+        Array2D.init imageSize imageSize (fun x y -> Pixel ((x, y), TiffModule.getColourBands image (x, y)))
+
+    let pixelMap = createPixelMap pixelArray
     let neighbours = createNeighboursFunction pixelMap N
     let bestNeighbours = createBestNeighbourFunction neighbours threshold
     let tryGrowOneSegment = createTryGrowOneSegmentFunction bestNeighbours pixelMap

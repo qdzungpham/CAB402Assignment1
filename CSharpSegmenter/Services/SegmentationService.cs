@@ -32,7 +32,7 @@ namespace CSharpSegmenter.Services
                 }
             }
 
-            TryGrowAllCoordinates();
+            GrowUntilNoChange();
         }
 
         public Segment Segmentation(int x, int y)
@@ -156,8 +156,10 @@ namespace CSharpSegmenter.Services
             {
                 Segment mutallyOptimalNeighbour = mutallyOptimalNeighbours.First();
                 Segment mergeSegment = new Parent(segmentA, mutallyOptimalNeighbour);
-                segmentation.Add(mutallyOptimalNeighbour, mergeSegment);
-                segmentation.Add(segmentA, mergeSegment);
+                segmentation[mutallyOptimalNeighbour] = mergeSegment;
+                segmentation[segmentA] = mergeSegment;
+                //segmentation.Add(mutallyOptimalNeighbour, mergeSegment);
+                //segmentation.Add(segmentA, mergeSegment);
             }
         }
 
@@ -168,6 +170,21 @@ namespace CSharpSegmenter.Services
             foreach (var coordinate in coordinates)
             {
                 TryGrowOneSegment(coordinate);
+            }
+        }
+
+
+
+
+        private void GrowUntilNoChange()
+        {
+            var currentSegmentation = new Dictionary<Segment, Segment>(segmentation);
+
+            TryGrowAllCoordinates();
+
+            if (currentSegmentation.Count != segmentation.Count)
+            {
+                GrowUntilNoChange();
             }
         }
 

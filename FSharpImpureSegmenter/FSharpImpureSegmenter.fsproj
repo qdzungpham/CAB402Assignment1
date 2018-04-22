@@ -6,11 +6,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="DitherModule.fs" />
-    <Compile Include="Program.fs" />
-    <Compile Include="SegmentationModule.fs" />
-    <Compile Include="SegmentModule.fs" />
     <Compile Include="TiffModule.fs" />
+    <Compile Include="ImpureSegmentModule.fs" />
+    <Compile Include="DitherModule.fs" />  
+    <Compile Include="ImpureSegmentationModule.fs" />
+    <Compile Include="Program.fs" />    
   </ItemGroup>
 
   <ItemGroup>
