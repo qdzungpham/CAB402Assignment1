@@ -14,6 +14,7 @@ namespace CSharpSegmenter.Services
         private int N;
         private float threshold;
 
+        // Contructor
         public SegmentationService(TiffImage image, int N, float threshold)
         {
             segmentation = new Dictionary<Segment, Segment>();
@@ -23,6 +24,7 @@ namespace CSharpSegmenter.Services
             var imageSize = (int)Math.Pow(2, N);
             pixelMap = new Segment[imageSize, imageSize];
 
+            // init pixel map
             for (var x = 0; x < imageSize; x++)
             {
                 for (var y = 0; y < imageSize; y++)
@@ -32,15 +34,18 @@ namespace CSharpSegmenter.Services
                 }
             }
 
+            // run the whole algorithm
             GrowUntilNoChange();
         }
 
+        // find root segmentation 
         public Segment Segmentation(int x, int y)
         {
             return FindRoot(MapCoordinateToSegment(new Coordinate { X = x, Y = y }));
         }
 
-        public Segment FindRoot(Segment segment)
+        // Find the largest/top level segment that the given segment is a part of(based on the current segmentation)
+        private Segment FindRoot(Segment segment)
         {
             Segment immediateParent;
 
@@ -57,17 +62,22 @@ namespace CSharpSegmenter.Services
 
         }
 
-        public Segment MapCoordinateToSegment(Coordinate coordinate)
+        // look up segment object based on coordinate
+        private Segment MapCoordinateToSegment(Coordinate coordinate)
         {
             return pixelMap[coordinate.X, coordinate.Y];
         }
 
-        public HashSet<Segment> GetNeighbouringSegments(Segment givenSegment)
+        // Find the neighbouring segments of the given segment (assuming we are only segmenting the top corner of the image of size 2^N x 2^N)
+        // Note: this is a higher order function which given a pixelMap function and a size N, 
+        // returns a function which given a current segmentation, returns the set of Segments which are neighbours of a given segment
+        private HashSet<Segment> GetNeighbouringSegments(Segment givenSegment)
         {
             List<Coordinate> coordinates = givenSegment.GetSegmentCoordinates();
             
             List<Coordinate> neighbouringCoordinates = new List<Coordinate>();
 
+            // add all possible coordinates
             foreach (Coordinate coordinate in coordinates)
             {
                 neighbouringCoordinates.Add(new Coordinate { X = coordinate.X - 1, Y = coordinate.Y });
@@ -76,21 +86,23 @@ namespace CSharpSegmenter.Services
                 neighbouringCoordinates.Add(new Coordinate { X = coordinate.X, Y = coordinate.Y + 1 });
             }
 
+            // filter out neighbours
             neighbouringCoordinates = neighbouringCoordinates
                 .Where(coordinate => coordinate.X >= 0 && coordinate.Y >= 0 && coordinate.X < Math.Pow(2, N) && coordinate.Y < Math.Pow(2, N))
                 .ToList();
 
 
-
+            // map each neighbouring coordinates to root segments
             List<Segment> segments = new List<Segment>();
             foreach (Coordinate coordinate in neighbouringCoordinates)
             {
                 segments.Add(FindRoot(MapCoordinateToSegment(coordinate)));
             }
 
-
+            // convert to hashset to remove duplicates
             HashSet<Segment> result = new HashSet<Segment>(segments);
 
+            // dont want the input segment
             result.Remove(givenSegment);
 
             return result;
@@ -98,7 +110,8 @@ namespace CSharpSegmenter.Services
 
         }
 
-
+        // Find the neighbour(s) of the given segment that has the (equal) best merge cost
+        // (exclude neighbours if their merge cost is greater than the threshold)
         private HashSet<Segment> GetBestNeighbouringSegments(Segment givenSegment)
         {
             HashSet<Segment> neighbours = GetNeighbouringSegments(givenSegment);
@@ -108,6 +121,7 @@ namespace CSharpSegmenter.Services
                 return result;
             }
 
+            // dictionary to store neighbouring segments and their coressponding merge cost
             var segmentsAndMergeCosts = new Dictionary<Segment, float>();
 
             foreach (var neighbour in neighbours)
@@ -115,12 +129,18 @@ namespace CSharpSegmenter.Services
                 segmentsAndMergeCosts.Add(neighbour, SegmentService.GetMergeCost(givenSegment, neighbour));
             }
 
+            // extract the best merge cost here
             var bestMergeCost = segmentsAndMergeCosts.OrderBy(x => x.Value).First().Value;
 
-
+            // return the best segments based on their merge cost 
             return segmentsAndMergeCosts.Where(pair => pair.Value == bestMergeCost && pair.Value <= threshold).Select(pair => pair.Key).ToHashSet();
         }
 
+        // Try to find a neighbouring segmentB such that:
+        //     1) segmentB is one of the best neighbours of segment A, and 
+        //     2) segmentA is one of the best neighbours of segment B
+        // if such a mutally optimal neighbour exists then merge them,
+        // otherwise, choose one of segmentA's best neighbours (if any) and try to grow it instead (gradient descent)
         private void TryGrowOneSegment(Coordinate coordinate)
         {
             var segmentA = FindRoot(MapCoordinateToSegment(coordinate));
@@ -153,11 +173,11 @@ namespace CSharpSegmenter.Services
                 Segment mergeSegment = new Parent(segmentA, mutallyOptimalNeighbour);
                 segmentation[mutallyOptimalNeighbour] = mergeSegment;
                 segmentation[segmentA] = mergeSegment;
-                //segmentation.Add(mutallyOptimalNeighbour, mergeSegment);
-                //segmentation.Add(segmentA, mergeSegment);
             }
         }
 
+        // Try to grow the segments corresponding to every pixel on the image in turn 
+        // (considering pixel coordinates in special dither order)
         private void TryGrowAllCoordinates()
         {
             var coordinates = DitherModule.GetDitherCoordinates(N);
@@ -168,9 +188,7 @@ namespace CSharpSegmenter.Services
             }
         }
 
-
-
-
+        // Keep growing segments as above until no further merging is possible
         private void GrowUntilNoChange()
         {
             var currentSegmentation = new Dictionary<Segment, Segment>(segmentation);

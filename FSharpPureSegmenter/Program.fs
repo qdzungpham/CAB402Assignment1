@@ -3,7 +3,7 @@
 [<EntryPoint>]
 let main argv =
     // load a Tiff image
-    let image = TiffModule.loadImage argv.[0]
+    let image = TiffModule.loadImage "..\\TestImages\\L15-3792E-1717N-Q4.tif"
 
     // testing using sub-image of size 32x32 pixels
     let N = 5

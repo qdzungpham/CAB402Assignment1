@@ -58,6 +58,8 @@ let rec getNumPixels (segment: Segment) : float =
 let sumStddevOfAllBands list =
     List.reduce (+) list
 
+// -------------- End of helper functions -------------------
+
 // return a list of the standard deviations of the pixel colours in the given segment
 // the list contains one entry for each colour band, typically: [red, green and blue]
 let stddev (segment: Segment) : float list =

@@ -37,6 +37,7 @@ namespace CSharpSegmenter.Services
 
         }
 
+        // return the sum of the standard deviations of the individual segments
         private static float GetSumStddevOfAllBands(Segment segment)
         {
             var colourList = segment.GetSegmentColours();
@@ -58,6 +59,9 @@ namespace CSharpSegmenter.Services
             return result;
         }
 
+        // determine the cost of merging the given segments: 
+        // equal to the standard deviation of the combined the segments minus the sum of the standard deviations of the individual segments, 
+        // weighted by their respective sizes and summed over all colour bands
         public static float GetMergeCost(Segment segment1, Segment segment2)
         {
             var segment1SumStddev = GetSumStddevOfAllBands(segment1);

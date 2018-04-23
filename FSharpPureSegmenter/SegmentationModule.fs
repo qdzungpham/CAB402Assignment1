@@ -59,6 +59,9 @@ let rec getMutallyOptimalNeighbours bestNeighbours segmentation segmentA segment
             let x = bestNeighbours segmentation head
             if (Set.contains segmentA x) then [head] @ rest else rest
 
+// ------------- End of Helper Functions --------------------
+
+
 // Find the largest/top level segment that the given segment is a part of (based on the current segmentation)
 let rec findRoot (segmentation: Segmentation) segment : Segment =
     //raise (System.NotImplementedException())
