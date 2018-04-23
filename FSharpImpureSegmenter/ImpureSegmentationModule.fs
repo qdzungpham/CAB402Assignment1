@@ -1,62 +1,23 @@
 ﻿module ImpureSegmentationModule
 
 open ImpureSegmentModule
+open System.Collections.Generic
+open System.Linq
 
 // Maps segments to their immediate parent segment that they are contained within (if any) 
-type Segmentation = Map<Segment, Segment>
+type Segmentation = Dictionary<Segment, Segment>
 
 // Helper Functions
 
 let findImmediateParent (segmentation: Segmentation) segment : Segment =
-    match segmentation.TryFind(segment) with 
-    | Some(foundSegment) -> foundSegment 
-    | None -> segment
+    match segmentation.ContainsKey(segment) with 
+    | true -> segmentation.[segment] 
+    | false -> segment
 
 let rec convertSegmentIntoCoordinates (segment:Segment) : Coordinate list =
     match segment with
     | Pixel(coordinate,_) -> [coordinate]
     | Parent(segment1, segment2) -> (convertSegmentIntoCoordinates segment1) @ (convertSegmentIntoCoordinates segment2)
-
-let getNeighbouringCoodinatesOfSingleCoordinate (coordinate:Coordinate) : Coordinate list =
-    let x, y = coordinate
-    [(x-1,y);(x+1,y);(x,y+1);(x,y-1)]
-
-let rec flatten list =
-    match list with 
-    | [] -> []
-    | head::tail -> head @ (flatten tail)
-
-let getNeighbouringCoordinates (segment:Segment) : Coordinate list =
-    segment |> convertSegmentIntoCoordinates |> List.map getNeighbouringCoodinatesOfSingleCoordinate |> flatten
-
-let filterCoordinate (N:int) (coordinate:Coordinate) =
-    let x, y = coordinate
-    x >= 0 && y >= 0 && x < (pown 2 N) && y < (pown 2 N)
-
-let rec calculateSegmentMergeCost list segment =
-    match list with
-    | [] -> []
-    | head::tail -> [(head, mergeCost segment head)] @ calculateSegmentMergeCost tail segment
-    
-let getBestMergeCost list =
-    List.minBy snd list |> snd
-
-let rec getBestNeighbours list bestMergeCost threshold =
-    match list with 
-    | [] -> []
-    | head::tail ->
-        let rest = getBestNeighbours tail bestMergeCost threshold
-        let segment, mergeCost = head
-        if mergeCost = bestMergeCost && mergeCost <= threshold then [segment] @ rest
-        else rest
-
-let rec getMutallyOptimalNeighbours bestNeighbours segmentation segmentA segmentABestNeighbours =
-    match segmentABestNeighbours with 
-        | [] -> []
-        | head::tail -> 
-            let rest = getMutallyOptimalNeighbours bestNeighbours segmentation segmentA tail
-            let x = bestNeighbours segmentation head
-            if (Set.contains segmentA x) then [head] @ rest else rest
 
 
 
@@ -68,9 +29,9 @@ let rec findRoot (segmentation: Segmentation) segment : Segment =
     //raise (System.NotImplementedException())
     // Fixme: add implementation here
     let immediateParent = findImmediateParent segmentation segment
-    match segmentation.TryFind(immediateParent) with
-    | Some(_) -> findRoot segmentation immediateParent
-    | None -> immediateParent
+    match segmentation.ContainsKey(immediateParent) with
+    | true -> findRoot segmentation immediateParent
+    | false -> immediateParent
 
 
 // Initially, every pixel/coordinate in the image is a separate Segment
@@ -85,17 +46,35 @@ let createPixelMap (pixelArray:Segment[,]) : (Coordinate -> Segment) =
 // Find the neighbouring segments of the given segment (assuming we are only segmenting the top corner of the image of size 2^N x 2^N)
 // Note: this is a higher order function which given a pixelMap function and a size N, 
 // returns a function which given a current segmentation, returns the set of Segments which are neighbours of a given segment
-let createNeighboursFunction (pixelMap:Coordinate->Segment) (N:int) : (Segmentation -> Segment -> Set<Segment>) =
+let createNeighboursFunction (pixelMap:Coordinate->Segment) (N:int) : (Segmentation -> Segment -> HashSet<Segment>) =
     //raise (System.NotImplementedException())
     // Fixme: add implementation here
-    let theFunction segmentation segment : Set<Segment> =
-        segment 
-        |> getNeighbouringCoordinates 
-        |> List.filter (filterCoordinate N) 
-        |> List.map pixelMap 
-        |> List.map (findRoot segmentation) 
-        |> Set.ofList 
-        |> Set.remove segment
+    let theFunction segmentation segment : HashSet<Segment> =
+        let coordinates = convertSegmentIntoCoordinates segment
+        let neighbouringCoodinates = new List<Coordinate>()
+
+        for coordinate in coordinates do
+            let x, y = coordinate
+            neighbouringCoodinates.Add((x-1,y))
+            neighbouringCoodinates.Add((x+1,y))
+            neighbouringCoodinates.Add((x,y+1))
+            neighbouringCoodinates.Add((x,y-1))
+
+        let filteredNeighbouringCoodinates = neighbouringCoodinates.Where(fun coordinate -> let x, y = coordinate
+                                                                                            x >= 0 && y >= 0 && x < (pown 2 N) && y < (pown 2 N))
+
+        let segments = new List<Segment>()
+
+        for coordinate in filteredNeighbouringCoodinates do
+            segments.Add(pixelMap coordinate |> findRoot segmentation)
+
+        let result = new HashSet<Segment>(segments)
+        
+        result.Remove(segment) |> ignore
+
+        result
+
+        
     theFunction
 
 // The following are also higher order functions, which given some inputs, return a function which ...
@@ -103,17 +82,20 @@ let createNeighboursFunction (pixelMap:Coordinate->Segment) (N:int) : (Segmentat
 
  // Find the neighbour(s) of the given segment that has the (equal) best merge cost
  // (exclude neighbours if their merge cost is greater than the threshold)
-let createBestNeighbourFunction (neighbours:Segmentation->Segment->Set<Segment>) (threshold:float) : (Segmentation->Segment->Set<Segment>) =
+let createBestNeighbourFunction (neighbours:Segmentation->Segment->HashSet<Segment>) (threshold:float) : (Segmentation->Segment->HashSet<Segment>) =
     //raise (System.NotImplementedException())
     // Fixme: add implementation here
-    let theFunction segmentation segment : Set<Segment>  =
-        let allNeighbours =  neighbours segmentation segment |> Set.toList
-        match allNeighbours with 
-        | [] -> Set.empty
-        | _ -> 
-            let segmentAndMergeCost = calculateSegmentMergeCost allNeighbours segment
-            let bestMergeCost = getBestMergeCost segmentAndMergeCost
-            getBestNeighbours segmentAndMergeCost bestMergeCost threshold |> Set.ofList
+    let theFunction segmentation segment : HashSet<Segment>  =
+        let neighbours = neighbours segmentation segment
+        let result = new HashSet<Segment>()
+        match neighbours.Count with
+        | 0 -> result
+        | _ -> let segmentsAndMergeCosts = new Dictionary<Segment, float>()
+               for neighbour in neighbours do
+                   segmentsAndMergeCosts.Add(neighbour, (mergeCost segment neighbour))
+               let bestMergeCost = segmentsAndMergeCosts.OrderBy(fun x -> x.Value).First().Value
+
+               segmentsAndMergeCosts.Where(fun pair -> pair.Value = bestMergeCost && pair.Value <= threshold).Select(fun pair -> pair.Key).ToHashSet()
 
     theFunction
 
@@ -122,18 +104,29 @@ let createBestNeighbourFunction (neighbours:Segmentation->Segment->Set<Segment>)
 //     2) segmentA is one of the best neighbours of segment B
 // if such a mutally optimal neighbour exists then merge them,
 // otherwise, choose one of segmentA's best neighbours (if any) and try to grow it instead (gradient descent)
-let createTryGrowOneSegmentFunction (bestNeighbours:Segmentation->Segment->Set<Segment>) (pixelMap:Coordinate->Segment) : (Segmentation->Coordinate->Segmentation) =
+let createTryGrowOneSegmentFunction (bestNeighbours:Segmentation->Segment->HashSet<Segment>) (pixelMap:Coordinate->Segment) : (Segmentation->Coordinate->Segmentation) =
     //raise (System.NotImplementedException())
     // Fixme: add implementation here
     let rec theFunction segmentation coordinate : Segmentation =
         let segmentA = pixelMap coordinate |> findRoot segmentation
-        let segmentABestNeighbours = bestNeighbours segmentation segmentA |> Set.toList
-        let mutallyOptimalNeighbours = getMutallyOptimalNeighbours bestNeighbours segmentation segmentA segmentABestNeighbours
-        match mutallyOptimalNeighbours with
-        | [] -> if List.isEmpty segmentABestNeighbours then segmentation 
-                else theFunction segmentation (segmentABestNeighbours |> List.head |> convertSegmentIntoCoordinates |> List.head)
-        | head::_ -> segmentation.Add(segmentA, Parent(segmentA, head)).Add(head, Parent(segmentA, head))
+        let segmentABestNeighbours = bestNeighbours segmentation segmentA 
+        let mutallyOptimalNeighbours = new HashSet<Segment>()
+        //mutallyOptimalNeighbours.Contains()
+        if segmentABestNeighbours.Count <> 0 then do
+            for segmentABestNeighbour in segmentABestNeighbours do
+                let segmentBBestNeibours = segmentABestNeighbour |> findRoot (segmentation)|> bestNeighbours (segmentation) 
+                if segmentBBestNeibours.Contains(segmentA) 
+                then do mutallyOptimalNeighbours.Add(segmentABestNeighbour) |> ignore
 
+        if mutallyOptimalNeighbours.Count = 0 then do
+            if segmentABestNeighbours.Count <> 0 then do theFunction segmentation (segmentABestNeighbours.First() |> convertSegmentIntoCoordinates |> List.head) |> ignore
+        else do
+            let mutallyOptimalNeighbour = mutallyOptimalNeighbours.First()
+            let mergeSegment = Parent(segmentA, mutallyOptimalNeighbour)
+            segmentation.Add(mutallyOptimalNeighbour, mergeSegment)
+            segmentation.Add(segmentA, mergeSegment) |> ignore
+
+        segmentation
     theFunction
 
 // Try to grow the segments corresponding to every pixel on the image in turn 
@@ -177,7 +170,7 @@ let segment (image:TiffModule.Image) (N: int) (threshold:float)  : (Coordinate -
     let tryGrowAllCoordinates = createTryGrowAllCoordinatesFunction tryGrowOneSegment N
     let growUntilNoChange = createGrowUntilNoChangeFunction tryGrowAllCoordinates
 
-    let finalSegmentation = growUntilNoChange Map.empty
+    let finalSegmentation = growUntilNoChange (new Dictionary<Segment, Segment>())
 
     let theFunction (coordinate:Coordinate) : Segment =
         findRoot finalSegmentation (pixelMap coordinate)

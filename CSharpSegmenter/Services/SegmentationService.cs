@@ -85,14 +85,9 @@ namespace CSharpSegmenter.Services
             List<Segment> segments = new List<Segment>();
             foreach (Coordinate coordinate in neighbouringCoordinates)
             {
-                segments.Add(MapCoordinateToSegment(coordinate));
+                segments.Add(FindRoot(MapCoordinateToSegment(coordinate)));
             }
 
-
-            for (int i = 0; i < segments.Count; i++)
-            {
-                segments[i] = FindRoot(segments[i]);
-            }
 
             HashSet<Segment> result = new HashSet<Segment>(segments);
 
